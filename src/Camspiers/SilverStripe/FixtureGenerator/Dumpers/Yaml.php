@@ -23,6 +23,6 @@ class Yaml implements DumperInterface
      */
     public function dump(array $data)
     {
-        return file_put_contents($this->filename, YamDumper::dump($data));
+        return file_put_contents($this->filename, YamDumper::dump($data, 999));
     }
 }

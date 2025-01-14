@@ -14,11 +14,11 @@
         }
     },
     "require": {
-        "symfony/yaml": "~3.2"
+        "symfony/yaml": "*"
     },
     "require-dev": {
-        "silverstripe/framework": "~4",
-        "symfony/class-loader": "^3.4"
+        "silverstripe/framework": "^4 || ^5",
+        "symfony/class-loader": "*"
     },
     "extra": {
         "installer-paths": {

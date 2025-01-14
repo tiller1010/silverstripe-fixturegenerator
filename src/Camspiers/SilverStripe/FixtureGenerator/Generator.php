@@ -4,6 +4,9 @@ namespace Camspiers\SilverStripe\FixtureGenerator;
 
 use IteratorAggregate;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\Core\Config\Config;
+use SilverStripe\Assets\Image;
+use SilverStripe\CMS\Model\SiteTree;
 
 /**
  * Class Generator
@@ -78,15 +81,42 @@ class Generator
             $map[$className] = array();
         }
         // Add the object to the
-        $map[$className][$id] = $this->getMap($dataObject);
+
+        $map[SiteTree::class]['TestSeederPage']['Title'] = 'Test Seeder Page';
+
+        // $map[$className][$id] = $this->getMap($dataObject);
+        $defaults = Config::inst()->get($className, 'defaults');
+        foreach ($this->getMap($dataObject) as $propertyName => $propertyValue) {
+            // if value equals the default value, skip it
+            if (isset($defaults[$propertyName]) && $defaults[$propertyName] == $propertyValue) {
+                continue;
+            }
+            if ($dataObject->dbObject($propertyName) instanceof DBEnum) {
+                if ($propertyValue == $dataObject->dbObject($propertyName)->getDefault()) {
+                    continue;
+                }
+            }
+            $map[$className][$id][$propertyName] = $propertyValue;
+        }
+
         // Loop over the has one of this object
-        if ($hasOnes = $dataObject->has_one()) {
+        if ($hasOnes = $dataObject->hasOne()) {
             foreach ($hasOnes as $relName => $relClass) {
                 if ($this->isAllowedRelation("$className.$relName")) {
                     // Get the dataobject from the relation
                     $hasOne = $dataObject->$relName();
 
                     $relClassName = $hasOne->ClassName;
+
+                    // if classname is an image, use a generic one
+                    if ($relClassName == Image::class) {
+                        $map[Image::class]['TestSeederImage']['URL'] = 'https://loremflickr.com/500/500/cat';
+                        $map[$className][$id][$relName] = "=>SilverStripe\Assets\Image.TestSeederImage";
+                        continue;
+                    } else if ($relClassName instanceof SiteTree) {
+                        $map[$className][$id][$relName] = "=>SilverStripe\CMS\Model\SiteTree.TestSeederPage";
+                        continue;
+                    }
 
                     // Only process it if it exists
                     if ($hasOne->exists() && !$this->hasDataObject($hasOne, $map)) {
@@ -101,7 +131,7 @@ class Generator
             }
         }
         // Loop over the has many relations
-        if ($hasManys = $dataObject->has_many()) {
+        if ($hasManys = $dataObject->hasMany()) {
             foreach ($hasManys as $relName => $relClass) {
                 // Get the dataobjects from the relation
                 if ($this->isAllowedRelation("$className.$relName")) {
@@ -136,41 +166,41 @@ class Generator
             }
         }
         // Loop over the many many relations
-        if ($manyManys = $dataObject->many_many()) {
-            foreach ($manyManys as $relName => $relClass) {
-                // Get the dataobjects from the relation
-                if ($this->isAllowedRelation("$className.$relName")) {
-                    $items = $dataObject->$relName();
-                    // If any exist
-                    if ($items instanceof IteratorAggregate && count($items) > 0) {
-                        // Loops of each dataobject
-                        foreach ($items as $manyMany) {
-                            // Only process it if it exists
-
-                            $relClassName = $manyMany->ClassName;
-
-                            if ($manyMany->exists() && !$this->hasDataObject($manyMany, $map)) {
-                                if (($this->mode & self::RELATED_OBJECT_EXCLUDE) === 0) {
-                                    // Recursively generate a map for this object
-                                    $this->generateFromDataObject($manyMany, $map);
-                                }
-                                // Add the relation to the original objects map
-                                if (!isset($map[$className][$id][$relName])) {
-                                    $map[$className][$id] = array_merge(
-                                        $map[$className][$id],
-                                        array(
-                                            $relName => "=>$relClassName." . $manyMany->ID
-                                        )
-                                    );
-                                } else {
-                                    $map[$className][$id][$relName] .= ", =>$relClassName." . $manyMany->ID;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        // if ($manyManys = $dataObject->many_many()) {
+        //     foreach ($manyManys as $relName => $relClass) {
+        //         // Get the dataobjects from the relation
+        //         if ($this->isAllowedRelation("$className.$relName")) {
+        //             $items = $dataObject->$relName();
+        //             // If any exist
+        //             if ($items instanceof IteratorAggregate && count($items) > 0) {
+        //                 // Loops of each dataobject
+        //                 foreach ($items as $manyMany) {
+        //                     // Only process it if it exists
+        //
+        //                     $relClassName = $manyMany->ClassName;
+        //
+        //                     if ($manyMany->exists() && !$this->hasDataObject($manyMany, $map)) {
+        //                         if (($this->mode & self::RELATED_OBJECT_EXCLUDE) === 0) {
+        //                             // Recursively generate a map for this object
+        //                             $this->generateFromDataObject($manyMany, $map);
+        //                         }
+        //                         // Add the relation to the original objects map
+        //                         if (!isset($map[$className][$id][$relName])) {
+        //                             $map[$className][$id] = array_merge(
+        //                                 $map[$className][$id],
+        //                                 array(
+        //                                     $relName => "=>$relClassName." . $manyMany->ID
+        //                                 )
+        //                             );
+        //                         } else {
+        //                             $map[$className][$id][$relName] .= ", =>$relClassName." . $manyMany->ID;
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
 
         return $map;
     }
@@ -195,6 +225,7 @@ class Generator
         unset($map['RecordClassName']);
         unset($map['ClassName']);
         unset($map['ID']);
+        unset($map['Version']);
         foreach ($map as $key => $value) {
             if (substr($key, -2) == 'ID') {
                 unset($map[$key]);
