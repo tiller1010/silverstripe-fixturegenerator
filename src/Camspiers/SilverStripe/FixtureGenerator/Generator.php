@@ -182,16 +182,14 @@ class Generator
                             // Recursively generate a map for this object
                             $this->generateFromDataObject($child, $map);
                         }
-                        // Add the relation to the original objects map
-                        if (!isset($map[$className][$id]['Children'])) {
-                            $map[$className][$id] = array_merge(
-                                $map[$className][$id],
-                                array(
-                                    'Children' => "=>$relClassName." . $child->ID
-                                )
-                            );
-                        } else {
-                            $map[$className][$id]['Children'] .= ", =>$relClassName." . $child->ID;
+                        // Add the relation to the child objects map
+                        $map[$relClassName][$child->ID]['Parent'] = "=>$className." . $id;
+
+                        // Move Parent to the end of the array (yaml is dumped in reverse)
+                        if (isset($map[$className])) {
+                          $value = $map[$className];
+                          unset($map[$className]);
+                          $map[$className] = $value;
                         }
                     }
                 }
@@ -235,14 +233,14 @@ class Generator
         //     }
         // }
 
-        // Move Image to the end of the array, yaml is dumped in reverse
+        // Move Image to the end of the array (yaml is dumped in reverse)
         if (isset($map[Image::class])) {
           $value = $map[Image::class];
           unset($map[Image::class]);
           $map[Image::class] = $value;
         }
 
-        // Move Sitetree to the end of the array, yaml is dumped in reverse
+        // Move Sitetree to the end of the array (yaml is dumped in reverse)
         if (isset($map['Page'])) {
           $value = $map['Page'];
           unset($map['Page']);
