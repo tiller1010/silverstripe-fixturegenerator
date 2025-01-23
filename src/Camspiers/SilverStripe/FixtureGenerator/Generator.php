@@ -109,19 +109,20 @@ class Generator
 
                     $relClassName = $hasOne->ClassName;
 
-                    // if classname is an image, use a generic one
-                    if ($relClassName == Image::class) {
-                        $map[Image::class]['TestSeederImage']['Name'] = 'Seeder_Image.jpg';
-                        $map[Image::class]['TestSeederImage']['URL'] = 'https://loremflickr.com/500/500/cat';
-                        $map[$className][$id][$relName] = "=>SilverStripe\Assets\Image.TestSeederImage";
-                        continue;
-                    } else if (is_subclass_of($relClassName, SiteTree::class)) {
-                        $map[$className][$id][$relName] = "=>Page.TestSeederPage";
-                        continue;
-                    }
-
                     // Only process it if it exists
                     if ($hasOne->exists() && !$this->hasDataObject($hasOne, $map)) {
+
+                        // If classname is an image, use a generic one
+                        if ($relClassName == Image::class) {
+                            $map[Image::class]['TestSeederImage']['Name'] = 'Seeder_Image.jpg';
+                            $map[Image::class]['TestSeederImage']['URL'] = 'https://loremflickr.com/500/500/cat';
+                            $map[$className][$id][$relName] = "=>SilverStripe\Assets\Image.TestSeederImage";
+                            continue;
+                        } else if (is_subclass_of($relClassName, SiteTree::class)) {
+                            $map[$className][$id][$relName] = "=>Page.TestSeederPage";
+                            continue;
+                        }
+
                         if (($this->mode & self::RELATED_OBJECT_EXCLUDE) === 0) {
                             // Recursively generate a map for this object
                             $this->generateFromDataObject($hasOne, $map);
