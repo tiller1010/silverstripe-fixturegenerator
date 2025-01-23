@@ -3,10 +3,11 @@
 namespace Camspiers\SilverStripe\FixtureGenerator;
 
 use IteratorAggregate;
-use SilverStripe\ORM\DataObject;
-use SilverStripe\Core\Config\Config;
 use SilverStripe\Assets\Image;
 use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Core\Config\Config;
+use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\Hierarchy\Hierarchy;
 
 /**
  * Class Generator
@@ -82,7 +83,7 @@ class Generator
         }
         // Add the object to the
 
-        $map[SiteTree::class]['TestSeederPage']['Title'] = 'Test Seeder Page';
+        $map['Page']['TestSeederPage']['Title'] = 'Test Seeder Page';
 
         // $map[$className][$id] = $this->getMap($dataObject);
         $defaults = Config::inst()->get($className, 'defaults');
@@ -110,11 +111,12 @@ class Generator
 
                     // if classname is an image, use a generic one
                     if ($relClassName == Image::class) {
+                        $map[Image::class]['TestSeederImage']['Name'] = 'Seeder_Image.jpg';
                         $map[Image::class]['TestSeederImage']['URL'] = 'https://loremflickr.com/500/500/cat';
                         $map[$className][$id][$relName] = "=>SilverStripe\Assets\Image.TestSeederImage";
                         continue;
-                    } else if ($relClassName instanceof SiteTree) {
-                        $map[$className][$id][$relName] = "=>SilverStripe\CMS\Model\SiteTree.TestSeederPage";
+                    } else if (is_subclass_of($relClassName, SiteTree::class)) {
+                        $map[$className][$id][$relName] = "=>Page.TestSeederPage";
                         continue;
                     }
 
@@ -130,6 +132,7 @@ class Generator
                 }
             }
         }
+
         // Loop over the has many relations
         if ($hasManys = $dataObject->hasMany()) {
             foreach ($hasManys as $relName => $relClass) {
@@ -165,6 +168,36 @@ class Generator
                 }
             }
         }
+
+        // Loop over the children from Hierarch
+        if ($dataObject->hasExtension(Hierarchy::class)) {
+            if ($children = $dataObject->Children()) {
+                // Loops of each dataobject
+                foreach ($children as $child) {
+                    $relClassName = $child->ClassName;
+
+                    // Only process it if it exists
+                    if ($child->exists() && !$this->hasDataObject($child, $map)) {
+                        if (($this->mode & self::RELATED_OBJECT_EXCLUDE) === 0) {
+                            // Recursively generate a map for this object
+                            $this->generateFromDataObject($child, $map);
+                        }
+                        // Add the relation to the original objects map
+                        if (!isset($map[$className][$id]['Children'])) {
+                            $map[$className][$id] = array_merge(
+                                $map[$className][$id],
+                                array(
+                                    'Children' => "=>$relClassName." . $child->ID
+                                )
+                            );
+                        } else {
+                            $map[$className][$id]['Children'] .= ", =>$relClassName." . $child->ID;
+                        }
+                    }
+                }
+            }
+        }
+
         // Loop over the many many relations
         // if ($manyManys = $dataObject->many_many()) {
         //     foreach ($manyManys as $relName => $relClass) {
@@ -201,6 +234,22 @@ class Generator
         //         }
         //     }
         // }
+
+        // Move Image to the end of the array, yaml is dumped in reverse
+        if (isset($map[Image::class])) {
+          $value = $map[Image::class];
+          unset($map[Image::class]);
+          $map[Image::class] = $value;
+        }
+
+        // Move Sitetree to the end of the array, yaml is dumped in reverse
+        if (isset($map['Page'])) {
+          $value = $map['Page'];
+          unset($map['Page']);
+          $map['Page'] = $value;
+        }
+
+        // var_dump($map);die;
 
         return $map;
     }
