@@ -5,6 +5,7 @@ namespace Camspiers\SilverStripe\FixtureGenerator;
 use IteratorAggregate;
 use SilverStripe\Assets\Image;
 use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBEnum;
@@ -54,6 +55,7 @@ class Generator
         $this->relations = $relations;
         $this->mode = $mode;
     }
+
     /**
      * @param IteratorAggregate $set
      * @return mixed
@@ -69,6 +71,7 @@ class Generator
 
         return $this->dumper->dump(array_reverse($map, true));
     }
+
     /**
      * @param DataObject $dataObject
      * @param array      $map
@@ -78,6 +81,7 @@ class Generator
     {
         $className = $dataObject->ClassName;
         $id = $dataObject->ID;
+        $title = $this->getDataObjectTitle($dataObject);
         // If we haven't encountered a object of ClassName, add ClassName to data
         if (!isset($map[$className])) {
             $map[$className] = array();
@@ -96,7 +100,7 @@ class Generator
                     continue;
                 }
             }
-            $map[$className][$id][$propertyName] = $propertyValue;
+            $map[$className][$title][$propertyName] = $propertyValue;
         }
 
         // Loop over the has one of this object
@@ -115,10 +119,10 @@ class Generator
                         if ($relClassName == Image::class) {
                             $map[Image::class]['TestSeederImage']['Name'] = 'Seeder_Image.jpg';
                             $map[Image::class]['TestSeederImage']['URL'] = 'https://loremflickr.com/500/500/cat';
-                            $map[$className][$id][$relName] = "=>SilverStripe\Assets\Image.TestSeederImage";
+                            $map[$className][$title][$relName] = "=>SilverStripe\Assets\Image.TestSeederImage";
                             continue;
                         } else if (is_subclass_of($relClassName, SiteTree::class)) {
-                            $map[$className][$id][$relName] = "=>Page.TestSeederPage";
+                            $map[$className][$title][$relName] = "=>Page.TestSeederPage";
                             continue;
                         }
 
@@ -127,7 +131,7 @@ class Generator
                             $this->generateFromDataObject($hasOne, $map);
                         }
                         // Add the relation to the current dataobjects map
-                        $map[$className][$id][$relName] = "=>$relClassName." . $hasOne->ID;
+                        $map[$className][$title][$relName] = "=>$relClassName." . $this->getDataObjectTitle($hasOne);
                     }
                 }
             }
@@ -152,15 +156,15 @@ class Generator
                                     $this->generateFromDataObject($hasMany, $map);
                                 }
                                 // Add the relation to the original objects map
-                                if (!isset($map[$className][$id][$relName])) {
-                                    $map[$className][$id] = array_merge(
-                                        $map[$className][$id],
+                                if (!isset($map[$className][$title][$relName])) {
+                                    $map[$className][$title] = array_merge(
+                                        $map[$className][$title],
                                         array(
-                                            $relName => "=>$relClassName." . $hasMany->ID
+                                            $relName => "=>$relClassName." . $this->getDataObjectTitle($hasMany)
                                         )
                                     );
                                 } else {
-                                    $map[$className][$id][$relName] .= ", =>$relClassName." . $hasMany->ID;
+                                    $map[$className][$title][$relName] .= ", =>$relClassName." . $this->getDataObjectTitle($hasMany);
                                 }
                             }
                         }
@@ -183,7 +187,7 @@ class Generator
                             $this->generateFromDataObject($child, $map);
                         }
                         // Add the relation to the child objects map
-                        $map[$relClassName][$child->ID]['Parent'] = "=>$className." . $id;
+                        $map[$relClassName][$this->getDataObjectTitle($child)]['Parent'] = "=>$className." . $title;
 
                         // Move Parent to the end of the array (yaml is dumped in reverse)
                         if (isset($map[$className])) {
@@ -247,10 +251,26 @@ class Generator
           $map['Page'] = $value;
         }
 
-        // var_dump($map);die;
-
         return $map;
     }
+
+    /**
+     * @param DataObject $dataObject
+     * @return string
+     */
+    private function getDataObjectTitle(DataObject $dataObject)
+    {
+        if ($dataObject->hasMethod('getTitle')) {
+            $title = $dataObject->getTitle();
+        } else if ($dataObject->hasMethod('getName')) {
+            $title = $dataObject->getName();
+        } else {
+            $title = ClassInfo::shortName($dataObject);
+        }
+
+        return str_replace(' ', '', $title . '_' . $dataObject->ID);
+    }
+
     /**
      * @param DataObject $dataObject
      * @param array      $map
@@ -258,8 +278,9 @@ class Generator
      */
     private function hasDataObject(DataObject $dataObject, array $map = array())
     {
-        return isset($map[$dataObject->ClassName][$dataObject->ID]);
+        return isset($map[$dataObject->ClassName][$this->getDataObjectTitle($dataObject)]);
     }
+
     /**
      * @param DataObject $dataObject
      * @return array
@@ -281,6 +302,7 @@ class Generator
 
         return $map;
     }
+
     /**
      * @param $relation
      * @return bool
