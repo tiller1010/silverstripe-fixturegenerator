@@ -7,6 +7,7 @@ use SilverStripe\Assets\Image;
 use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\FieldType\DBEnum;
 use SilverStripe\ORM\Hierarchy\Hierarchy;
 
 /**
@@ -81,11 +82,9 @@ class Generator
         if (!isset($map[$className])) {
             $map[$className] = array();
         }
-        // Add the object to the
 
         $map['Page']['TestSeederPage']['Title'] = 'Test Seeder Page';
 
-        // $map[$className][$id] = $this->getMap($dataObject);
         $defaults = Config::inst()->get($className, 'defaults');
         foreach ($this->getMap($dataObject) as $propertyName => $propertyValue) {
             // if value equals the default value, skip it
