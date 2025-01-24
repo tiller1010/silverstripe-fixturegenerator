@@ -1,0 +1,9 @@
+---
+Name: Fixture_Generator_DevelopmentAdmin
+---
+SilverStripe\Dev\DevelopmentAdmin:
+  registered_controllers:
+    fixture_generation:
+      controller: Camspiers\SilverStripe\FixtureGenerator\Dev\DevFixtureGenerationController
+      links:
+        fixture_generation: 'Generate fixture file for seeder. Provide the base class and an ID, and it will generate fixture entries for itself and related components.'
