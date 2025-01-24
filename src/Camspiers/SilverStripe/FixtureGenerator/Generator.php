@@ -41,6 +41,12 @@ class Generator
      * @var int
      */
     private $mode;
+
+    /**
+     * @var string
+     */
+    private $pageClass;
+
     /**
      * @param DumperInterface $dumper    The objec to dump the output with
      * @param array           $relations An array of shell wildcard patterns
@@ -87,7 +93,16 @@ class Generator
             $map[$className] = array();
         }
 
-        $map['Page']['TestSeederPage']['Title'] = 'Test Seeder Page';
+        // If the first record processed is a SiteTree subclass
+        if (!$this->pageClass) {
+            if (is_subclass_of($className, SiteTree::class)) {
+                $this->pageClass = $className;
+            } else {
+                $this->pageClass = 'Page';
+                $map[$this->pageClass]['TestSeederPage']['Title'] = 'Test Seeder Page';
+            }
+        }
+
 
         $defaults = Config::inst()->get($className, 'defaults');
         foreach ($this->getMap($dataObject) as $propertyName => $propertyValue) {
@@ -117,12 +132,14 @@ class Generator
 
                         // If classname is an image, use a generic one
                         if ($relClassName == Image::class) {
-                            $map[Image::class]['TestSeederImage']['Name'] = 'Seeder_Image.jpg';
-                            $map[Image::class]['TestSeederImage']['URL'] = 'https://loremflickr.com/500/500/cat';
+                            if (empty($map[Image::class])) {
+                                $map[Image::class]['TestSeederImage']['Name'] = 'Seeder_Image.jpg';
+                                $map[Image::class]['TestSeederImage']['URL'] = 'https://loremflickr.com/500/500/cat';
+                            }
                             $map[$className][$title][$relName] = "=>SilverStripe\Assets\Image.TestSeederImage";
                             continue;
                         } else if (is_subclass_of($relClassName, SiteTree::class)) {
-                            $map[$className][$title][$relName] = "=>Page.TestSeederPage";
+                            $map[$className][$title][$relName] = '=>' . $this->pageClass . '.TestSeederPage';
                             continue;
                         }
 
@@ -244,11 +261,11 @@ class Generator
           $map[Image::class] = $value;
         }
 
-        // Move Sitetree to the end of the array (yaml is dumped in reverse)
-        if (isset($map['Page'])) {
-          $value = $map['Page'];
-          unset($map['Page']);
-          $map['Page'] = $value;
+        // Move pageClass to the end of the array (yaml is dumped in reverse)
+        if (isset($map[$this->pageClass])) {
+          $value = $map[$this->pageClass];
+          unset($map[$this->pageClass]);
+          $map[$this->pageClass] = $value;
         }
 
         return $map;
