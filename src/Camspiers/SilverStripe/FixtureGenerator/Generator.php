@@ -173,15 +173,14 @@ class Generator
                                     $this->generateFromDataObject($hasMany, $map);
                                 }
                                 // Add the relation to the original objects map
-                                if (!isset($map[$className][$title][$relName])) {
-                                    $map[$className][$title] = array_merge(
-                                        $map[$className][$title],
-                                        array(
-                                            $relName => "=>$relClassName." . $this->getDataObjectTitle($hasMany)
-                                        )
-                                    );
-                                } else {
-                                    $map[$className][$title][$relName] .= ", =>$relClassName." . $this->getDataObjectTitle($hasMany);
+                                $hasOneFieldName = DataObject::getSchema()->getRemoteJoinField($className, $relName);
+                                $map[$relClassName][$this->getDataObjectTitle($hasMany)][$hasOneFieldName] = "=>$className." . $title;
+
+                                // Move Parent to the end of the array (yaml is dumped in reverse)
+                                if (isset($map[$className])) {
+                                  $value = $map[$className];
+                                  unset($map[$className]);
+                                  $map[$className] = $value;
                                 }
                             }
                         }
