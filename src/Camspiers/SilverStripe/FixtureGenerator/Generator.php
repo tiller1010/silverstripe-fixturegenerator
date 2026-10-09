@@ -125,6 +125,8 @@ class Generator
                     // Get the dataobject from the relation
                     $hasOne = $dataObject->$relName();
 
+                    if (!$hasOne || !$hasOne->exists()) continue;
+
                     $relClassName = $hasOne->ClassName;
 
                     // Only process it if it exists
@@ -189,7 +191,7 @@ class Generator
             }
         }
 
-        // Loop over the children from Hierarch
+        // Loop over the children from Hierarchy
         if ($dataObject->hasExtension(Hierarchy::class)) {
             if ($children = $dataObject->Children()) {
                 // Loops of each dataobject
@@ -284,7 +286,10 @@ class Generator
             $title = ClassInfo::shortName($dataObject);
         }
 
-        return str_replace(' ', '', $title . '_' . $dataObject->ID);
+        $title = str_replace(' ', '', $title . '_' . $dataObject->ID);
+        $title = str_replace('.', '_dot_', $title);
+
+        return $title;
     }
 
     /**
