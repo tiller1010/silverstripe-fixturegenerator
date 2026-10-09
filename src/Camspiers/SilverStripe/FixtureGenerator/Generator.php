@@ -140,7 +140,7 @@ class Generator
                             $map[$className][$title][$relName] = "=>SilverStripe\Assets\Image.TestSeederImage";
                             continue;
                         } else if (is_subclass_of($relClassName, SiteTree::class)) {
-                            $map[$className][$title][$relName] = '=>' . $this->pageClass . '.TestSeederPage';
+                            $map[$className][$title][$relName] = '=>' . $this->pageClass . $this->getDataObjectTitle($hasOne);
                             continue;
                         }
 
@@ -276,11 +276,17 @@ class Generator
      */
     private function getDataObjectTitle(DataObject $dataObject)
     {
+        $title = '';
+
         if ($dataObject->hasMethod('getTitle')) {
             $title = $dataObject->getTitle();
-        } else if ($dataObject->hasMethod('getName')) {
+        }
+        
+        if (!$title && $dataObject->hasMethod('getName')) {
             $title = $dataObject->getName();
-        } else {
+        }
+        
+        if (!$title) {
             $title = ClassInfo::shortName($dataObject);
         }
 
