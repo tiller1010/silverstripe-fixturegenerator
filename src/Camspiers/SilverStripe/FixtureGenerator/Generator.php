@@ -75,7 +75,9 @@ class Generator
             }
         }
 
-        return $this->dumper->dump(array_reverse($map, true));
+        $map = array_reverse($map, true);
+
+        return $this->dumper->dump($this->orderMapByReferences($map));
     }
 
     /**
@@ -326,6 +328,116 @@ class Generator
         }
 
         return $map;
+    }
+
+    /**
+     * Order classes and records so fixture references always point backwards in the YAML file.
+     *
+     * @param array $map
+     * @return array
+     */
+    private function orderMapByReferences(array $map)
+    {
+        $classDependencies = array();
+        $recordDependencies = array();
+
+        foreach ($map as $className => $records) {
+            foreach ($records as $recordName => $properties) {
+                foreach ($properties as $propertyValue) {
+                    foreach ($this->getFixtureReferences($propertyValue) as $reference) {
+                        list($relatedClass, $relatedRecord) = $reference;
+                        if (!isset($map[$relatedClass])) {
+                            continue;
+                        }
+
+                        if ($relatedClass === $className) {
+                            if (isset($map[$relatedClass][$relatedRecord])) {
+                                $recordDependencies[$className][$recordName][$relatedRecord] = true;
+                            }
+                        } else {
+                            $classDependencies[$className][$relatedClass] = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        $map = $this->sortByDependencies($map, $classDependencies);
+        foreach ($map as $className => $records) {
+            $dependencies = isset($recordDependencies[$className])
+                ? $recordDependencies[$className]
+                : array();
+            $map[$className] = $this->sortByDependencies($records, $dependencies);
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param mixed $value
+     * @return array
+     */
+    private function getFixtureReferences($value)
+    {
+        if (!is_string($value)) {
+            return array();
+        }
+
+        $references = array();
+        foreach (explode(',', $value) as $item) {
+            $item = trim($item);
+            if (strpos($item, '=>') !== 0) {
+                continue;
+            }
+
+            $reference = substr($item, 2);
+            $separator = strpos($reference, '.');
+            if ($separator === false) {
+                continue;
+            }
+
+            $references[] = array(
+                substr($reference, 0, $separator),
+                substr($reference, $separator + 1)
+            );
+        }
+
+        return $references;
+    }
+
+    /**
+     * Stable topological sort. Back-edges are ignored when references are cyclic.
+     *
+     * @param array $items
+     * @param array $dependencies
+     * @return array
+     */
+    private function sortByDependencies(array $items, array $dependencies)
+    {
+        $result = array();
+        $states = array();
+        $visit = function ($key) use (&$visit, &$result, &$states, $items, $dependencies) {
+            if (isset($states[$key])) {
+                return;
+            }
+
+            $states[$key] = 'visiting';
+            if (isset($dependencies[$key])) {
+                foreach ($dependencies[$key] as $dependency => $unused) {
+                    if (isset($items[$dependency]) && !isset($states[$dependency])) {
+                        $visit($dependency);
+                    }
+                }
+            }
+            $states[$key] = 'visited';
+            $result[$key] = $items[$key];
+        };
+
+        foreach ($items as $key => $unused) {
+            $visit($key);
+        }
+
+        return $result;
     }
 
     /**

@@ -163,6 +163,35 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
                 . '=>TestManyManyRelatedDataObject.Second_3',
             $result['TestManyManyDataObject']['Owner_1']['Items']
         );
+        $this->assertLessThan(
+            array_search('TestManyManyDataObject', array_keys($result)),
+            array_search('TestManyManyRelatedDataObject', array_keys($result))
+        );
+    }
+    public function testProcessManyManyOrdersRelatedRecordsOfTheSameClassFirst()
+    {
+        $result = $this->generator->process(
+            new \SilverStripe\ORM\ArrayList(
+                array(
+                    new \TestSelfManyManyDataObject(
+                        array(
+                            'ID' => 1,
+                            'ClassName' => 'TestSelfManyManyDataObject',
+                            'Test' => 'Owner'
+                        )
+                    )
+                )
+            )
+        );
+
+        $this->assertSame(
+            array('Related_2', 'Owner_1'),
+            array_keys($result['TestSelfManyManyDataObject'])
+        );
+        $this->assertSame(
+            '=>TestSelfManyManyDataObject.Related_2',
+            $result['TestSelfManyManyDataObject']['Owner_1']['Items']
+        );
     }
     public function testProcessPatternInclude()
     {
