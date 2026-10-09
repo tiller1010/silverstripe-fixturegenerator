@@ -370,6 +370,68 @@ class Generator
             $map[$className] = $this->sortByDependencies($records, $dependencies);
         }
 
+        return $this->removeForwardReferences($map);
+    }
+
+    /**
+     * Remove fixture references whose targets have not been defined yet.
+     *
+     * Circular relations cannot be represented in both directions in a fixture file. After sorting,
+     * this keeps the relation on the later record and removes its invalid counterpart on the earlier one.
+     *
+     * @param array $map
+     * @return array
+     */
+    private function removeForwardReferences(array $map)
+    {
+        $classPositions = array_flip(array_keys($map));
+        $recordPositions = array();
+        foreach ($map as $className => $records) {
+            $recordPositions[$className] = array_flip(array_keys($records));
+        }
+
+        foreach ($map as $className => $records) {
+            foreach ($records as $recordName => $properties) {
+                foreach ($properties as $propertyName => $propertyValue) {
+                    if (!is_string($propertyValue)) {
+                        continue;
+                    }
+
+                    $keptValues = array();
+                    $hasReference = false;
+                    foreach (explode(',', $propertyValue) as $item) {
+                        $item = trim($item);
+                        $references = $this->getFixtureReferences($item);
+                        if (!$references) {
+                            $keptValues[] = $item;
+                            continue;
+                        }
+
+                        $hasReference = true;
+                        list($relatedClass, $relatedRecord) = $references[0];
+                        if (!isset($classPositions[$relatedClass])
+                            || !isset($recordPositions[$relatedClass][$relatedRecord])
+                            || $classPositions[$relatedClass] < $classPositions[$className]
+                            || ($relatedClass === $className
+                                && $recordPositions[$relatedClass][$relatedRecord]
+                                    < $recordPositions[$className][$recordName])
+                        ) {
+                            $keptValues[] = $item;
+                        }
+                    }
+
+                    if (!$hasReference) {
+                        continue;
+                    }
+                    if ($keptValues) {
+                        $map[$className][$recordName][$propertyName] = implode(', ', $keptValues);
+                    } else {
+                        unset($map[$className][$recordName][$propertyName]);
+                    }
+                }
+            }
+        }
+
         return $map;
     }
 

@@ -23,7 +23,13 @@ class TestSelfManyManyDataObject extends DataObject
 
     public function Items()
     {
-        if ($this->ID != 1) {
+        if ($this->ID == 1) {
+            $relatedID = 2;
+            $relatedTitle = 'Related';
+        } else if ($this->ID == 2) {
+            $relatedID = 1;
+            $relatedTitle = 'Owner';
+        } else {
             return new ArrayList();
         }
 
@@ -31,9 +37,9 @@ class TestSelfManyManyDataObject extends DataObject
             array(
                 new self(
                     array(
-                        'ID' => 2,
+                        'ID' => $relatedID,
                         'ClassName' => self::class,
-                        'Test' => 'Related'
+                        'Test' => $relatedTitle
                     )
                 )
             )

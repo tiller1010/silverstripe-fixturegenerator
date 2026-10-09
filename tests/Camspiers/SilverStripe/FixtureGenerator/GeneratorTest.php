@@ -192,6 +192,10 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
             '=>TestSelfManyManyDataObject.Related_2',
             $result['TestSelfManyManyDataObject']['Owner_1']['Items']
         );
+        $this->assertArrayNotHasKey(
+            'Items',
+            $result['TestSelfManyManyDataObject']['Related_2']
+        );
     }
     public function testProcessPatternInclude()
     {
