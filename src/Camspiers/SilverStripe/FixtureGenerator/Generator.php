@@ -141,9 +141,9 @@ class Generator
                             }
                             $map[$className][$title][$relName] = "=>SilverStripe\Assets\Image.TestSeederImage";
                             continue;
-                        } else if (is_subclass_of($relClassName, SiteTree::class)) {
-                            $map[$className][$title][$relName] = '=>' . $this->pageClass . $this->getDataObjectTitle($hasOne);
-                            continue;
+                        /* } else if (is_subclass_of($relClassName, SiteTree::class)) { */
+                        /*     $map[$className][$title][$relName] = '=>' . $this->pageClass . $this->getDataObjectTitle($hasOne); */
+                        /*     continue; */
                         }
 
                         if (($this->mode & self::RELATED_OBJECT_EXCLUDE) === 0) {
