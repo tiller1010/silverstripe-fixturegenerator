@@ -149,11 +149,7 @@ class Generator
                             $this->generateFromDataObject($hasOne, $map);
                         }
                         // Add the relation to the current dataobjects map
-                        // Only do this if the related object is defined earlier in the the map,
-                        // otherwise it will be undefined when the fixture is loaded
-                        if (isset($map[$relClassName][$this->getDataObjectTitle($hasOne)])) {
-                          $map[$className][$title][$relName] = "=>$relClassName." . $this->getDataObjectTitle($hasOne);
-                        }
+                        $map[$className][$title][$relName] = "=>$relClassName." . $this->getDataObjectTitle($hasOne);
                     }
                 }
             }
@@ -247,12 +243,6 @@ class Generator
                         $this->generateFromDataObject($manyMany, $map);
                     }
 
-                    // Add the relation to the current dataobjects map
-                    // Only do this if the related object is defined earlier in the the map,
-                    // otherwise it will be undefined when the fixture is loaded
-                    if (!isset($map[$relClassName][$relTitle])) {
-                        continue;
-                    }
                     $reference = "=>$relClassName.$relTitle";
                     if (!isset($map[$className][$title][$relName])) {
                         $map[$className][$title][$relName] = $reference;
