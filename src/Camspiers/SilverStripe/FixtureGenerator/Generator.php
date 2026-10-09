@@ -294,6 +294,7 @@ class Generator
 
         $title = str_replace(' ', '', $title . '_' . $dataObject->ID);
         $title = str_replace('.', '_dot_', $title);
+        $title = str_replace(',', '_comma_', $title);
 
         return $title;
     }
