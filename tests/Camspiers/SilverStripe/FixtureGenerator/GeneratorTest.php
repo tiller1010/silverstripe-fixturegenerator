@@ -105,6 +105,65 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
             )
         );
     }
+    public function testProcessManyMany()
+    {
+        $result = $this->generator->process(
+            new \SilverStripe\ORM\ArrayList(
+                array(
+                    new \TestManyManyDataObject(
+                        array(
+                            'ID' => 1,
+                            'ClassName' => 'TestManyManyDataObject',
+                            'Test' => 'Owner'
+                        )
+                    )
+                )
+            )
+        );
+
+        $this->assertSame(
+            '=>TestManyManyRelatedDataObject.First_2, '
+                . '=>TestManyManyRelatedDataObject.Second_3',
+            $result['TestManyManyDataObject']['Owner_1']['Items']
+        );
+        $this->assertArrayHasKey(
+            'First_2',
+            $result['TestManyManyRelatedDataObject']
+        );
+        $this->assertArrayHasKey(
+            'Second_3',
+            $result['TestManyManyRelatedDataObject']
+        );
+    }
+    public function testProcessManyManyReferencesAlreadyProcessedObjects()
+    {
+        $result = $this->generator->process(
+            new \SilverStripe\ORM\ArrayList(
+                array(
+                    new \TestManyManyRelatedDataObject(
+                        array(
+                            'ID' => 2,
+                            'ClassName' => 'TestManyManyRelatedDataObject',
+                            'Test' => 'First'
+                        )
+                    ),
+                    new \TestManyManyDataObject(
+                        array(
+                            'ID' => 1,
+                            'ClassName' => 'TestManyManyDataObject',
+                            'Test' => 'Owner'
+                        )
+                    )
+                )
+            )
+        );
+
+        $this->assertSame(
+            '=>TestManyManyRelatedDataObject.First_2, '
+                . '=>TestManyManyRelatedDataObject.Second_3',
+            $result['TestManyManyDataObject']['Owner_1']['Items']
+        );
+    }
     public function testProcessPatternInclude()
     {
         $g = new Generator(

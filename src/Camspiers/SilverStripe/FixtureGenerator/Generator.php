@@ -86,7 +86,6 @@ class Generator
     private function generateFromDataObject(DataObject $dataObject, array &$map = array())
     {
         $className = $dataObject->ClassName;
-        $id = $dataObject->ID;
         $title = $this->getDataObjectTitle($dataObject);
         // If we haven't encountered a object of ClassName, add ClassName to data
         if (!isset($map[$className])) {
@@ -219,41 +218,40 @@ class Generator
         }
 
         // Loop over the many many relations
-        // if ($manyManys = $dataObject->many_many()) {
-        //     foreach ($manyManys as $relName => $relClass) {
-        //         // Get the dataobjects from the relation
-        //         if ($this->isAllowedRelation("$className.$relName")) {
-        //             $items = $dataObject->$relName();
-        //             // If any exist
-        //             if ($items instanceof IteratorAggregate && count($items) > 0) {
-        //                 // Loops of each dataobject
-        //                 foreach ($items as $manyMany) {
-        //                     // Only process it if it exists
-        //
-        //                     $relClassName = $manyMany->ClassName;
-        //
-        //                     if ($manyMany->exists() && !$this->hasDataObject($manyMany, $map)) {
-        //                         if (($this->mode & self::RELATED_OBJECT_EXCLUDE) === 0) {
-        //                             // Recursively generate a map for this object
-        //                             $this->generateFromDataObject($manyMany, $map);
-        //                         }
-        //                         // Add the relation to the original objects map
-        //                         if (!isset($map[$className][$id][$relName])) {
-        //                             $map[$className][$id] = array_merge(
-        //                                 $map[$className][$id],
-        //                                 array(
-        //                                     $relName => "=>$relClassName." . $manyMany->ID
-        //                                 )
-        //                             );
-        //                         } else {
-        //                             $map[$className][$id][$relName] .= ", =>$relClassName." . $manyMany->ID;
-        //                         }
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
+        if ($manyManys = $dataObject->manyMany()) {
+            foreach ($manyManys as $relName => $relClass) {
+                if (!$this->isAllowedRelation("$className.$relName")) {
+                    continue;
+                }
+
+                $items = $dataObject->$relName();
+                if (!$items instanceof IteratorAggregate || count($items) === 0) {
+                    continue;
+                }
+
+                foreach ($items as $manyMany) {
+                    if (!$manyMany->exists()) {
+                        continue;
+                    }
+
+                    $relClassName = $manyMany->ClassName;
+                    $relTitle = $this->getDataObjectTitle($manyMany);
+
+                    if (!$this->hasDataObject($manyMany, $map)
+                        && ($this->mode & self::RELATED_OBJECT_EXCLUDE) === 0
+                    ) {
+                        $this->generateFromDataObject($manyMany, $map);
+                    }
+
+                    $reference = "=>$relClassName.$relTitle";
+                    if (!isset($map[$className][$title][$relName])) {
+                        $map[$className][$title][$relName] = $reference;
+                    } else {
+                        $map[$className][$title][$relName] .= ", $reference";
+                    }
+                }
+            }
+        }
 
         // Move Image to the end of the array (yaml is dumped in reverse)
         if (isset($map[Image::class])) {
