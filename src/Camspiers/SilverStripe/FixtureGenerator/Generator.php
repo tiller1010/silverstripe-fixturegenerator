@@ -17,6 +17,8 @@ use SilverStripe\ORM\Hierarchy\Hierarchy;
  */
 class Generator
 {
+    const FALLBACK_IMAGE_URL = 'https://loremflickr.com/500/500/cat';
+
     /**
      * This mode includes relations specified
      */
@@ -119,6 +121,10 @@ class Generator
             $map[$className][$title][$propertyName] = $propertyValue;
         }
 
+        if ($dataObject instanceof Image) {
+            $map[$className][$title]['URL'] = $this->getImageURL($dataObject);
+        }
+
         // Loop over the has one of this object
         if ($hasOnes = $dataObject->hasOne()) {
             foreach ($hasOnes as $relName => $relClass) {
@@ -126,25 +132,27 @@ class Generator
                     // Get the dataobject from the relation
                     $hasOne = $dataObject->$relName();
 
-                    if (!$hasOne || !$hasOne->exists()) continue;
+                    if (!$hasOne || !$hasOne->exists()) {
+                        continue;
+                    }
 
                     $relClassName = $hasOne->ClassName;
 
+                    if ($hasOne instanceof Image) {
+                        $imageTitle = $this->getDataObjectTitle($hasOne);
+                        if (!$this->hasDataObject($hasOne, $map)) {
+                            $this->addImageToMap($hasOne, $map);
+                        }
+                        $map[$className][$title][$relName] = "=>$relClassName.$imageTitle";
+                        continue;
+                    }
+
                     // Only process it if it exists
                     if ($hasOne->exists() && !$this->hasDataObject($hasOne, $map)) {
-
-                        // If classname is an image, use a generic one
-                        if ($relClassName == Image::class) {
-                            if (empty($map[Image::class])) {
-                                $map[Image::class]['TestSeederImage']['Name'] = 'Seeder_Image.jpg';
-                                $map[Image::class]['TestSeederImage']['URL'] = 'https://loremflickr.com/500/500/cat';
-                            }
-                            $map[$className][$title][$relName] = "=>SilverStripe\Assets\Image.TestSeederImage";
-                            continue;
-                        /* } else if (is_subclass_of($relClassName, SiteTree::class)) { */
+                        /* if (is_subclass_of($relClassName, SiteTree::class)) { */
                         /*     $map[$className][$title][$relName] = '=>' . $this->pageClass . $this->getDataObjectTitle($hasOne); */
                         /*     continue; */
-                        }
+                        /* } */
 
                         if (($this->mode & self::RELATED_OBJECT_EXCLUDE) === 0) {
                             // Recursively generate a map for this object
@@ -270,6 +278,43 @@ class Generator
         }
 
         return $map;
+    }
+
+    /**
+     * @param Image $image
+     * @param array $map
+     * @return void
+     */
+    private function addImageToMap(Image $image, array &$map)
+    {
+        $className = $image->ClassName;
+        $title = $this->getDataObjectTitle($image);
+        $name = $image->Name;
+
+        if (!$name) {
+            $name = 'Seeder_Image.jpg';
+        }
+
+        $map[$className][$title]['Name'] = $name;
+        $map[$className][$title]['URL'] = $this->getImageURL($image);
+    }
+
+    /**
+     * @param Image $image
+     * @return string
+     */
+    private function getImageURL(Image $image)
+    {
+        $url = null;
+        if ($image->hasMethod('getURL')) {
+            $url = $image->getURL();
+        }
+
+        if (is_string($url)) {
+            $url = trim($url);
+        }
+
+        return $url ?: self::FALLBACK_IMAGE_URL;
     }
 
     /**

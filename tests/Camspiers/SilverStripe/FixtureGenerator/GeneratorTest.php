@@ -197,6 +197,74 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
             $result['TestSelfManyManyDataObject']['Related_2']
         );
     }
+    public function testProcessImageUsesItsURL()
+    {
+        $result = $this->generator->process(
+            new \SilverStripe\ORM\ArrayList(
+                array(
+                    new \TestImageDataObject(
+                        array(
+                            'ID' => 1,
+                            'Test' => 'Owner',
+                            'ImageURL' => 'https://example.com/assets/actual-image.jpg'
+                        )
+                    )
+                )
+            )
+        );
+
+        $this->assertSame(
+            'https://example.com/assets/actual-image.jpg',
+            $result['TestImage']['ActualImage_2']['URL']
+        );
+        $this->assertSame(
+            '=>TestImage.ActualImage_2',
+            $result['TestImageDataObject']['Owner_1']['Image']
+        );
+    }
+    public function testProcessImageFallsBackWhenItHasNoURL()
+    {
+        $result = $this->generator->process(
+            new \SilverStripe\ORM\ArrayList(
+                array(
+                    new \TestImageDataObject(
+                        array(
+                            'ID' => 1,
+                            'Test' => 'Owner',
+                            'ImageURL' => ''
+                        )
+                    )
+                )
+            )
+        );
+
+        $this->assertSame(
+            Generator::FALLBACK_IMAGE_URL,
+            $result['TestImage']['ActualImage_2']['URL']
+        );
+    }
+    public function testProcessImageAsRootObjectUsesItsURL()
+    {
+        $result = $this->generator->process(
+            new \SilverStripe\ORM\ArrayList(
+                array(
+                    new \TestImage(
+                        array(
+                            'ID' => 2,
+                            'Name' => 'root-image.jpg',
+                            'Test' => 'RootImage',
+                            'TestURL' => '/assets/root-image.jpg'
+                        )
+                    )
+                )
+            )
+        );
+
+        $this->assertSame(
+            '/assets/root-image.jpg',
+            $result['TestImage']['RootImage_2']['URL']
+        );
+    }
     public function testProcessPatternInclude()
     {
         $g = new Generator(
