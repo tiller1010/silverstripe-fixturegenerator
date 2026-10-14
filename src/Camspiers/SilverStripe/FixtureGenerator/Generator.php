@@ -23,6 +23,13 @@ class Generator
 {
     const FALLBACK_IMAGE_URL = 'https://loremflickr.com/500/500/cat';
 
+    const SKIPPED_RELATION_CLASSES = array(
+        'Bigfork\SilverStripeOAuth\Client\Model\Passport',
+        'SilverStripe\SessionManager\Models\LoginSession',
+        'SilverStripe\Security\Member',
+        'SilverStripe\Security\Group'
+    );
+
     /**
      * This mode includes relations specified
      */
@@ -128,8 +135,8 @@ class Generator
 
                     $relClassName = $hasOne->ClassName;
 
-                    if ($this->isPageOrSiteTreeLink($hasOne)) {
-                        $this->reportSkippedPageRelation($className, $relName, $relClassName);
+                    if ($this->isSkippedRelatedObject($hasOne)) {
+                        $this->reportSkippedRelation($className, $relName, $relClassName);
                         continue;
                     }
 
@@ -171,8 +178,8 @@ class Generator
                         foreach ($items as $hasMany) {
                             $relClassName = $hasMany->ClassName;
 
-                            if ($this->isPageOrSiteTreeLink($hasMany)) {
-                                $this->reportSkippedPageRelation($className, $relName, $relClassName);
+                            if ($this->isSkippedRelatedObject($hasMany)) {
+                                $this->reportSkippedRelation($className, $relName, $relClassName);
                                 continue;
                             }
 
@@ -206,8 +213,8 @@ class Generator
                 foreach ($children as $child) {
                     $relClassName = $child->ClassName;
 
-                    if ($this->isPageOrSiteTreeLink($child)) {
-                        $this->reportSkippedPageRelation($className, 'Children', $relClassName);
+                    if ($this->isSkippedRelatedObject($child)) {
+                        $this->reportSkippedRelation($className, 'Children', $relClassName);
                         continue;
                     }
 
@@ -244,8 +251,8 @@ class Generator
                 }
 
                 foreach ($items as $manyMany) {
-                    if ($this->isPageOrSiteTreeLink($manyMany)) {
-                        $this->reportSkippedPageRelation($className, $relName, $manyMany->ClassName);
+                    if ($this->isSkippedRelatedObject($manyMany)) {
+                        $this->reportSkippedRelation($className, $relName, $manyMany->ClassName);
                         continue;
                     }
 
@@ -301,9 +308,19 @@ class Generator
      * @param DataObject $dataObject
      * @return bool
      */
-    private function isPageOrSiteTreeLink(DataObject $dataObject)
+    private function isSkippedRelatedObject(DataObject $dataObject)
     {
-        return $dataObject instanceof SiteTree || $dataObject instanceof SiteTreeLink;
+        if ($dataObject instanceof SiteTree || $dataObject instanceof SiteTreeLink) {
+            return true;
+        }
+
+        foreach (self::SKIPPED_RELATION_CLASSES as $className) {
+            if (is_a($dataObject, $className)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -312,9 +329,9 @@ class Generator
      * @param string $relatedClassName
      * @return void
      */
-    private function reportSkippedPageRelation($className, $relationName, $relatedClassName)
+    private function reportSkippedRelation($className, $relationName, $relatedClassName)
     {
-        echo "Skipping relation $className.$relationName to $relatedClassName because it is a page or link to a page.<br>";
+        echo "Skipping relation $className.$relationName to excluded class $relatedClassName.<br>";
     }
 
     /**

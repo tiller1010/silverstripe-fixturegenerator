@@ -312,6 +312,22 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
         $this->assertArrayNotHasKey('TestSiteTreeDataObject', $result);
         $this->assertArrayNotHasKey('Page', $result);
     }
+    public function testSkipsSessionAndSecurityRelationClasses()
+    {
+        $method = new \ReflectionMethod($this->generator, 'isSkippedRelatedObject');
+        $method->setAccessible(true);
+
+        $this->assertTrue($method->invoke($this->generator, new \SilverStripe\Security\Member()));
+        $this->assertTrue($method->invoke($this->generator, new \SilverStripe\Security\Group()));
+        $this->assertContains(
+            'Bigfork\SilverStripeOAuth\Client\Model\Passport',
+            Generator::SKIPPED_RELATION_CLASSES
+        );
+        $this->assertContains(
+            'SilverStripe\SessionManager\Models\LoginSession',
+            Generator::SKIPPED_RELATION_CLASSES
+        );
+    }
     public function testProcessPatternInclude()
     {
         $g = new Generator(
