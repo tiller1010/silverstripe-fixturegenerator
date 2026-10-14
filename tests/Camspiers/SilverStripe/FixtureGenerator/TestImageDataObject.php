@@ -6,7 +6,8 @@ class TestImageDataObject extends DataObject
 {
     private static $db = array(
         'Test' => 'Varchar',
-        'ImageURL' => 'Varchar'
+        'ImageURL' => 'Varchar',
+        'ImageFilename' => 'Varchar'
     );
 
     public function getTitle()
@@ -28,7 +29,8 @@ class TestImageDataObject extends DataObject
                 'ID' => 2,
                 'Name' => 'actual-image.jpg',
                 'Test' => 'ActualImage',
-                'TestURL' => $this->ImageURL
+                'TestURL' => $this->ImageURL,
+                'TestFilename' => $this->ImageFilename
             )
         );
     }

@@ -6,7 +6,8 @@ class TestImage extends Image
 {
     private static $db = array(
         'Test' => 'Varchar',
-        'TestURL' => 'Varchar'
+        'TestURL' => 'Varchar',
+        'TestFilename' => 'Varchar'
     );
 
     public function getTitle()
@@ -19,9 +20,19 @@ class TestImage extends Image
         return $this->TestURL;
     }
 
+    public function getAbsoluteURL()
+    {
+        return $this->TestURL;
+    }
+
+    public function getFilename()
+    {
+        return $this->TestFilename;
+    }
+
     public function exists()
     {
-        return true;
+        return false;
     }
 
     public function hasOne()

@@ -48,11 +48,6 @@ class Generator
      */
     private $mode;
 
-    /**
-     * @var string
-     */
-    private $pageClass;
-
     private string $baseUrl = '';
 
     /**
@@ -102,17 +97,6 @@ class Generator
             $map[$className] = array();
         }
 
-        // If the first record processed is a SiteTree subclass
-        if (!$this->pageClass) {
-            if (is_subclass_of($className, SiteTree::class)) {
-                $this->pageClass = $className;
-            } else {
-                $this->pageClass = 'Page';
-                $map[$this->pageClass]['TestSeederPage']['Title'] = 'Test Seeder Page';
-            }
-        }
-
-
         $defaults = Config::inst()->get($className, 'defaults');
         foreach ($this->getMap($dataObject) as $propertyName => $propertyValue) {
             // if value equals the default value, skip it
@@ -138,11 +122,20 @@ class Generator
                     // Get the dataobject from the relation
                     $hasOne = $dataObject->$relName();
 
-                    if (!$hasOne || !$hasOne->exists()) {
+                    if (!$hasOne) {
                         continue;
                     }
 
                     $relClassName = $hasOne->ClassName;
+
+                    if ($this->isPageOrSiteTreeLink($hasOne)) {
+                        $this->reportSkippedPageRelation($className, $relName, $relClassName);
+                        continue;
+                    }
+
+                    if (!$this->relatedObjectExists($hasOne)) {
+                        continue;
+                    }
 
                     if ($hasOne instanceof Image) {
                         $imageTitle = $this->getDataObjectTitle($hasOne);
@@ -154,13 +147,7 @@ class Generator
                     }
 
                     // Only process it if it exists
-                    if ($hasOne->exists() && !$this->hasDataObject($hasOne, $map)) {
-                        if (is_subclass_of($relClassName, SiteTree::class) || is_subclass_of($relClassName, SiteTreeLink::class)) {
-                          // Report that we are not following links to other pages
-                          echo "Skipping relation $className.$relName to $relClassName because it is a page or link to a page.<br>";
-                          continue;
-                        }
-
+                    if (!$this->hasDataObject($hasOne, $map)) {
                         if (($this->mode & self::RELATED_OBJECT_EXCLUDE) === 0) {
                             // Recursively generate a map for this object
                             $this->generateFromDataObject($hasOne, $map);
@@ -184,8 +171,13 @@ class Generator
                         foreach ($items as $hasMany) {
                             $relClassName = $hasMany->ClassName;
 
+                            if ($this->isPageOrSiteTreeLink($hasMany)) {
+                                $this->reportSkippedPageRelation($className, $relName, $relClassName);
+                                continue;
+                            }
+
                             // Only process it if it exists
-                            if ($hasMany->exists() && !$this->hasDataObject($hasMany, $map)) {
+                            if ($this->relatedObjectExists($hasMany) && !$this->hasDataObject($hasMany, $map)) {
                                 if (($this->mode & self::RELATED_OBJECT_EXCLUDE) === 0) {
                                     // Recursively generate a map for this object
                                     $this->generateFromDataObject($hasMany, $map);
@@ -214,8 +206,13 @@ class Generator
                 foreach ($children as $child) {
                     $relClassName = $child->ClassName;
 
+                    if ($this->isPageOrSiteTreeLink($child)) {
+                        $this->reportSkippedPageRelation($className, 'Children', $relClassName);
+                        continue;
+                    }
+
                     // Only process it if it exists
-                    if ($child->exists() && !$this->hasDataObject($child, $map)) {
+                    if ($this->relatedObjectExists($child) && !$this->hasDataObject($child, $map)) {
                         if (($this->mode & self::RELATED_OBJECT_EXCLUDE) === 0) {
                             // Recursively generate a map for this object
                             $this->generateFromDataObject($child, $map);
@@ -247,7 +244,12 @@ class Generator
                 }
 
                 foreach ($items as $manyMany) {
-                    if (!$manyMany->exists()) {
+                    if ($this->isPageOrSiteTreeLink($manyMany)) {
+                        $this->reportSkippedPageRelation($className, $relName, $manyMany->ClassName);
+                        continue;
+                    }
+
+                    if (!$this->relatedObjectExists($manyMany)) {
                         continue;
                     }
 
@@ -277,14 +279,42 @@ class Generator
           $map[Image::class] = $value;
         }
 
-        // Move pageClass to the end of the array (yaml is dumped in reverse)
-        if (isset($map[$this->pageClass])) {
-          $value = $map[$this->pageClass];
-          unset($map[$this->pageClass]);
-          $map[$this->pageClass] = $value;
+        return $map;
+    }
+
+    /**
+     * Images can have a valid database record even when their physical asset is missing.
+     *
+     * @param DataObject $dataObject
+     * @return bool
+     */
+    private function relatedObjectExists(DataObject $dataObject)
+    {
+        if ($dataObject instanceof Image) {
+            return $dataObject->isInDB();
         }
 
-        return $map;
+        return $dataObject->exists();
+    }
+
+    /**
+     * @param DataObject $dataObject
+     * @return bool
+     */
+    private function isPageOrSiteTreeLink(DataObject $dataObject)
+    {
+        return $dataObject instanceof SiteTree || $dataObject instanceof SiteTreeLink;
+    }
+
+    /**
+     * @param string $className
+     * @param string $relationName
+     * @param string $relatedClassName
+     * @return void
+     */
+    private function reportSkippedPageRelation($className, $relationName, $relatedClassName)
+    {
+        echo "Skipping relation $className.$relationName to $relatedClassName because it is a page or link to a page.<br>";
     }
 
     /**
@@ -317,10 +347,12 @@ class Generator
             $url = $image->getAbsoluteURL();
         }
 
-        if (!$url) {
-          // Include the image url even if the file does not exist
-          if (!$this->baseUrl) $this->baseUrl = Environment::getEnv('SS_BASE_URL') ?: Director::absoluteBaseURL();
-          $url = Controller::join_links($this->baseUrl, 'assets', $image->Filename);
+        if (!$url && $image->Filename) {
+            // Include the mapped image URL even if the physical file does not exist.
+            if (!$this->baseUrl) {
+                $this->baseUrl = Environment::getEnv('SS_BASE_URL') ?: Director::absoluteBaseURL();
+            }
+            $url = Controller::join_links($this->baseUrl, 'assets', $image->Filename);
         }
 
         if (is_string($url)) {

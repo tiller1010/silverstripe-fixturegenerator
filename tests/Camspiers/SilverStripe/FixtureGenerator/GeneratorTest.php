@@ -206,7 +206,8 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
                         array(
                             'ID' => 1,
                             'Test' => 'Owner',
-                            'ImageURL' => 'https://example.com/assets/actual-image.jpg'
+                            'ImageURL' => 'https://example.com/assets/actual-image.jpg',
+                            'ImageFilename' => 'actual-image.jpg'
                         )
                     )
                 )
@@ -221,8 +222,9 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
             '=>TestImage.ActualImage_2',
             $result['TestImageDataObject']['Owner_1']['Image']
         );
+        $this->assertArrayNotHasKey('Page', $result);
     }
-    public function testProcessImageFallsBackWhenItHasNoURL()
+    public function testProcessMissingImageUsesItsMappedURL()
     {
         $result = $this->generator->process(
             new \SilverStripe\ORM\ArrayList(
@@ -231,7 +233,32 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
                         array(
                             'ID' => 1,
                             'Test' => 'Owner',
-                            'ImageURL' => ''
+                            'ImageURL' => '',
+                            'ImageFilename' => 'missing-image.jpg'
+                        )
+                    )
+                )
+            )
+        );
+
+        $url = $result['TestImage']['ActualImage_2']['URL'];
+        $this->assertNotSame(Generator::FALLBACK_IMAGE_URL, $url);
+        $this->assertSame(
+            '/assets/missing-image.jpg',
+            substr($url, -strlen('/assets/missing-image.jpg'))
+        );
+    }
+    public function testProcessImageFallsBackWithoutURLOrFilename()
+    {
+        $result = $this->generator->process(
+            new \SilverStripe\ORM\ArrayList(
+                array(
+                    new \TestImageDataObject(
+                        array(
+                            'ID' => 1,
+                            'Test' => 'Owner',
+                            'ImageURL' => '',
+                            'ImageFilename' => ''
                         )
                     )
                 )
@@ -253,7 +280,8 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
                             'ID' => 2,
                             'Name' => 'root-image.jpg',
                             'Test' => 'RootImage',
-                            'TestURL' => '/assets/root-image.jpg'
+                            'TestURL' => 'https://example.com/assets/root-image.jpg',
+                            'TestFilename' => 'root-image.jpg'
                         )
                     )
                 )
@@ -261,9 +289,28 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
         );
 
         $this->assertSame(
-            '/assets/root-image.jpg',
+            'https://example.com/assets/root-image.jpg',
             $result['TestImage']['RootImage_2']['URL']
         );
+    }
+    public function testProcessSkipsRelatedPagesAndTheirFixtures()
+    {
+        $result = $this->generator->process(
+            new \SilverStripe\ORM\ArrayList(
+                array(
+                    new \TestSiteTreeHolderDataObject(
+                        array(
+                            'ID' => 1,
+                            'Test' => 'Owner'
+                        )
+                    )
+                )
+            )
+        );
+
+        $this->assertArrayNotHasKey('Page', $result['TestSiteTreeHolderDataObject']['Owner_1']);
+        $this->assertArrayNotHasKey('TestSiteTreeDataObject', $result);
+        $this->assertArrayNotHasKey('Page', $result);
     }
     public function testProcessPatternInclude()
     {
