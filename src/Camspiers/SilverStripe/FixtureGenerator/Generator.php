@@ -10,6 +10,7 @@ use SilverStripe\Control\Director;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Environment;
+use SilverStripe\LinkField\Models\SiteTreeLink;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBEnum;
 use SilverStripe\ORM\Hierarchy\Hierarchy;
@@ -154,10 +155,11 @@ class Generator
 
                     // Only process it if it exists
                     if ($hasOne->exists() && !$this->hasDataObject($hasOne, $map)) {
-                        /* if (is_subclass_of($relClassName, SiteTree::class)) { */
-                        /*     $map[$className][$title][$relName] = '=>' . $this->pageClass . $this->getDataObjectTitle($hasOne); */
-                        /*     continue; */
-                        /* } */
+                        if (is_subclass_of($relClassName, SiteTree::class) || is_subclass_of($relClassName, SiteTreeLink::class)) {
+                          // Report that we are not following links to other pages
+                          echo "Skipping relation $className.$relName to $relClassName because it is a page or link to a page.<br>";
+                          continue;
+                        }
 
                         if (($this->mode & self::RELATED_OBJECT_EXCLUDE) === 0) {
                             // Recursively generate a map for this object
@@ -339,11 +341,11 @@ class Generator
         if ($dataObject->hasMethod('getTitle')) {
             $title = $dataObject->getTitle();
         }
-        
+
         if (!$title && $dataObject->hasMethod('getName')) {
             $title = $dataObject->getName();
         }
-        
+
         if (!$title) {
             $title = ClassInfo::shortName($dataObject);
         }
