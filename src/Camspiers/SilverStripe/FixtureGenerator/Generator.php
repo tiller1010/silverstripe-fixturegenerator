@@ -306,8 +306,8 @@ class Generator
     private function getImageURL(Image $image)
     {
         $url = null;
-        if ($image->hasMethod('getURL')) {
-            $url = $image->getURL();
+        if ($image->hasMethod('getAbsoluteURL')) {
+            $url = $image->getAbsoluteURL();
         }
 
         if (is_string($url)) {
