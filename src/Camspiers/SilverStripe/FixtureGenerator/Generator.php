@@ -5,8 +5,11 @@ namespace Camspiers\SilverStripe\FixtureGenerator;
 use IteratorAggregate;
 use SilverStripe\Assets\Image;
 use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Control\Controller;
+use SilverStripe\Control\Director;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
+use SilverStripe\Core\Environment;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBEnum;
 use SilverStripe\ORM\Hierarchy\Hierarchy;
@@ -48,6 +51,8 @@ class Generator
      * @var string
      */
     private $pageClass;
+
+    private string $baseUrl = '';
 
     /**
      * @param DumperInterface $dumper    The objec to dump the output with
@@ -308,6 +313,12 @@ class Generator
         $url = null;
         if ($image->hasMethod('getAbsoluteURL')) {
             $url = $image->getAbsoluteURL();
+        }
+
+        if (!$url) {
+          // Include the image url even if the file does not exist
+          if (!$this->baseUrl) $this->baseUrl = Environment::getEnv('SS_BASE_URL') ?: Director::absoluteBaseURL();
+          $url = Controller::join_links($this->baseUrl, 'assets', $image->Filename);
         }
 
         if (is_string($url)) {
