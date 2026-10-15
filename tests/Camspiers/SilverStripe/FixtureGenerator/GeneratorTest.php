@@ -328,6 +328,21 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
             Generator::SKIPPED_RELATION_CLASSES
         );
     }
+    public function testSkipsFileTrackingRelations()
+    {
+        $method = new \ReflectionMethod($this->generator, 'isAllowedRelation');
+        $method->setAccessible(true);
+
+        $this->assertFalse($method->invoke($this->generator, 'TestDataObject.FileTracking'));
+        $this->assertTrue($method->invoke($this->generator, 'TestDataObject.Images'));
+        $this->assertContains('FileTracking', Generator::SKIPPED_RELATION_NAMES);
+
+        $includingGenerator = new Generator(
+            $this->dumperStub,
+            array('TestDataObject.FileTracking')
+        );
+        $this->assertFalse($method->invoke($includingGenerator, 'TestDataObject.FileTracking'));
+    }
     public function testProcessPatternInclude()
     {
         $g = new Generator(

@@ -30,6 +30,10 @@ class Generator
         'SilverStripe\Security\Group'
     );
 
+    const SKIPPED_RELATION_NAMES = array(
+        'FileTracking'
+    );
+
     /**
      * This mode includes relations specified
      */
@@ -616,6 +620,11 @@ class Generator
      */
     private function isAllowedRelation($relation)
     {
+        $relationName = substr($relation, strrpos($relation, '.') + 1);
+        if (in_array($relationName, self::SKIPPED_RELATION_NAMES, true)) {
+            return false;
+        }
+
         if (is_null($this->relations)) {
             return true;
         } else {
