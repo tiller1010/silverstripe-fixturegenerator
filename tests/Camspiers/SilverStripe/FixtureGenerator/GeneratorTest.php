@@ -43,6 +43,30 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
             )
         );
     }
+    public function testGenerateYamlReturnsFixtureContentForDataObject()
+    {
+        $yaml = Generator::generateYaml(
+            new DataObject(
+                array(
+                    'ClassName' => DataObject::class,
+                    'ID' => 1,
+                    'Test' => 'Test'
+                )
+            )
+        );
+
+        $this->assertInternalType('string', $yaml);
+        $this->assertEquals(
+            array(
+                'DataObject' => array(
+                    1 => array(
+                        'Test' => 'Test'
+                    )
+                )
+            ),
+            \Symfony\Component\Yaml\Yaml::parse($yaml)
+        );
+    }
     public function testProcessHasOne()
     {
         $this->assertEquals(

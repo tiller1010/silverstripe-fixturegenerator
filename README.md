@@ -28,6 +28,14 @@ $records = //some DataObjectSet
 ))->process($records);
 ```
 
+### Return YAML for a single DataObject
+
+```php
+use Camspiers\SilverStripe\FixtureGenerator\Generator;
+
+$yaml = Generator::generateYaml($dataObject);
+```
+
 ### Example with certain relations allowed
 
 ```php

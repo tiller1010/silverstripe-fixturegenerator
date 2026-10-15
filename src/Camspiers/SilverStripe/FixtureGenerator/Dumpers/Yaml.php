@@ -12,9 +12,9 @@ class Yaml implements DumperInterface
      */
     private $filename;
     /**
-     * @param $filename
+     * @param string|null $filename
      */
-    public function __construct($filename)
+    public function __construct($filename = null)
     {
         $this->filename = $filename;
     }
@@ -23,6 +23,12 @@ class Yaml implements DumperInterface
      */
     public function dump(array $data)
     {
-        return file_put_contents($this->filename, YamDumper::dump($data, 999));
+        $yaml = YamDumper::dump($data, 999);
+
+        if ($this->filename === null) {
+            return $yaml;
+        }
+
+        return file_put_contents($this->filename, $yaml);
     }
 }

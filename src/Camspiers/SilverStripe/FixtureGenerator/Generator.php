@@ -2,6 +2,7 @@
 
 namespace Camspiers\SilverStripe\FixtureGenerator;
 
+use Camspiers\SilverStripe\FixtureGenerator\Dumpers\Yaml;
 use IteratorAggregate;
 use SilverStripe\Assets\Image;
 use SilverStripe\CMS\Model\SiteTree;
@@ -11,6 +12,7 @@ use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Environment;
 use SilverStripe\LinkField\Models\SiteTreeLink;
+use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBEnum;
 use SilverStripe\ORM\Hierarchy\Hierarchy;
@@ -74,6 +76,24 @@ class Generator
         $this->dumper = $dumper;
         $this->relations = $relations;
         $this->mode = $mode;
+    }
+
+    /**
+     * Generate YAML fixture content for a DataObject.
+     *
+     * @param DataObject $dataObject
+     * @param array|null $relations
+     * @param int $mode
+     * @return string
+     */
+    public static function generateYaml(
+        DataObject $dataObject,
+        array $relations = null,
+        $mode = self::RELATION_MODE_INCLUDE
+    ): string {
+        return (new self(new Yaml(), $relations, $mode))->process(
+            new ArrayList(array($dataObject))
+        );
     }
 
     /**
