@@ -130,6 +130,7 @@ class Generator
 
         $defaults = Config::inst()->get($className, 'defaults');
         foreach ($this->getMap($dataObject) as $propertyName => $propertyValue) {
+            $propertyValue = $this->resolveImageShortcodes($propertyValue, $map);
             // if value equals the default value, skip it
             if (isset($defaults[$propertyName]) && $defaults[$propertyName] == $propertyValue) {
                 continue;
@@ -375,6 +376,99 @@ class Generator
 
         $map[$className][$title]['Name'] = $name;
         $map[$className][$title]['URL'] = $this->getImageURL($image);
+    }
+
+    /**
+     * Replace image shortcodes in HTML fields and include their files in the fixture map.
+     *
+     * @param mixed $value
+     * @param array $map
+     * @return mixed
+     */
+    private function resolveImageShortcodes($value, array &$map)
+    {
+        if (!is_string($value) || stripos($value, '[image') === false) {
+            return $value;
+        }
+
+        return preg_replace_callback(
+            '/\[image\b((?:[^"\'\]]+|"[^"]*"|\'[^\']*\')*)\]/i',
+            function (array $matches) use (&$map) {
+                $attributes = $this->parseShortcodeAttributes($matches[1]);
+                if (!isset($attributes['id']) || !ctype_digit((string)$attributes['id'])) {
+                    return $matches[0];
+                }
+
+                $image = $this->getImageByID((int)$attributes['id']);
+                if (!$image instanceof Image || !$this->relatedObjectExists($image)) {
+                    return $matches[0];
+                }
+
+                if (!$this->hasDataObject($image, $map)) {
+                    $this->addImageToMap($image, $map);
+                }
+
+                unset($attributes['id']);
+
+                return $this->buildImageTag($attributes);
+            },
+            $value
+        );
+    }
+
+    /**
+     * @param string $source
+     * @return array
+     */
+    private function parseShortcodeAttributes($source)
+    {
+        $attributes = array();
+        preg_match_all(
+            '/([a-z_:][a-z0-9_:.-]*)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s"\']+))/i',
+            $source,
+            $matches,
+            PREG_SET_ORDER
+        );
+
+        foreach ($matches as $match) {
+            $rawValue = preg_replace('/^[^=]+=\s*/', '', $match[0]);
+            $quote = substr($rawValue, 0, 1);
+            $value = $quote === '"' || $quote === "'"
+                ? substr($rawValue, 1, -1)
+                : $rawValue;
+            $attributes[strtolower($match[1])] = $value;
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * @param array $attributes
+     * @return string
+     */
+    private function buildImageTag(array $attributes)
+    {
+        $html = '<img';
+        foreach ($attributes as $name => $value) {
+            $html .= sprintf(
+                ' %s="%s"',
+                $name,
+                htmlspecialchars($value, ENT_QUOTES, 'UTF-8', false)
+            );
+        }
+
+        return $html . '>';
+    }
+
+    /**
+     * Kept protected so applications can customise image lookup when required.
+     *
+     * @param int $id
+     * @return Image|null
+     */
+    protected function getImageByID($id)
+    {
+        return Image::get()->byID($id);
     }
 
     /**

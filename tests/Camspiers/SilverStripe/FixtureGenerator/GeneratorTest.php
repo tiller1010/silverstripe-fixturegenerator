@@ -317,6 +317,82 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
             $result['TestImage']['RootImage_2']['URL']
         );
     }
+    public function testProcessImageShortcodeCreatesImageFixtureAndNormalImageTag()
+    {
+        $generator = new \TestImageShortcodeGenerator(
+            $this->dumperStub,
+            new \TestImage(
+                array(
+                    'ID' => 218,
+                    'Name' => 'Picture1.png',
+                    'Test' => 'Picture1',
+                    'TestURL' => 'https://example.com/assets/Picture1.png',
+                    'TestFilename' => 'Picture1.png'
+                )
+            )
+        );
+        $content = '<p>Before</p>[image src="/assets/Picture1.png" id="218" '
+            . 'width="800" height="590" class="leftAlone ss-htmleditorfield-file image" '
+            . 'title="Picture1"]<p>After</p>';
+
+        $result = $generator->process(
+            new \SilverStripe\ORM\ArrayList(
+                array(
+                    new DataObject(
+                        array(
+                            'ClassName' => DataObject::class,
+                            'ID' => 1,
+                            'Content' => $content
+                        )
+                    )
+                )
+            )
+        );
+
+        $this->assertSame(
+            '<p>Before</p><img src="/assets/Picture1.png" width="800" height="590" '
+                . 'class="leftAlone ss-htmleditorfield-file image" title="Picture1"><p>After</p>',
+            $result['DataObject'][1]['Content']
+        );
+        $this->assertSame(
+            array(
+                'Name' => 'Picture1.png',
+                'URL' => 'https://example.com/assets/Picture1.png'
+            ),
+            $result['TestImage']['Picture1_218']
+        );
+    }
+    public function testProcessUnresolvedImageShortcodeLeavesItUntouched()
+    {
+        $generator = new \TestImageShortcodeGenerator(
+            $this->dumperStub,
+            new \TestImage(
+                array(
+                    'ID' => 218,
+                    'Name' => 'Picture1.png',
+                    'Test' => 'Picture1'
+                )
+            )
+        );
+        $content = '[image src="/assets/missing.png" id="999"]';
+
+        $result = $generator->process(
+            new \SilverStripe\ORM\ArrayList(
+                array(
+                    new DataObject(
+                        array(
+                            'ClassName' => DataObject::class,
+                            'ID' => 1,
+                            'Content' => $content
+                        )
+                    )
+                )
+            )
+        );
+
+        $this->assertSame($content, $result['DataObject'][1]['Content']);
+        $this->assertArrayNotHasKey('TestImage', $result);
+    }
     public function testProcessSkipsRelatedPagesAndTheirFixtures()
     {
         $result = $this->generator->process(
