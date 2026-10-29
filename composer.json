@@ -14,11 +14,13 @@
         }
     },
     "require": {
+        "php": "^8.3",
         "symfony/yaml": "*"
     },
     "require-dev": {
-        "silverstripe/framework": "^4 || ^5",
-        "symfony/class-loader": "*"
+        "silverstripe/framework": "^6",
+        "symfony/class-loader": "*",
+        "wernerkrauss/silverstripe-rector": "^1"
     },
     "extra": {
         "installer-paths": {
@@ -31,5 +33,11 @@
         }
     },
     "minimum-stability": "dev",
-    "prefer-stable" : true
+    "prefer-stable" : true,
+    "config": {
+        "allow-plugins": {
+            "composer/installers": true,
+            "silverstripe/vendor-plugin": true
+        }
+    }
 }
