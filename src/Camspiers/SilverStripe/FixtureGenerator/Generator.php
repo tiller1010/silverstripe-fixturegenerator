@@ -2,6 +2,9 @@
 
 namespace Camspiers\SilverStripe\FixtureGenerator;
 
+use SilverStripe\Model\List\ArrayList;
+use SilverStripe\Security\Member;
+use SilverStripe\Security\Group;
 use Camspiers\SilverStripe\FixtureGenerator\Dumpers\Yaml;
 use IteratorAggregate;
 use SilverStripe\Assets\Image;
@@ -12,7 +15,6 @@ use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Environment;
 use SilverStripe\LinkField\Models\SiteTreeLink;
-use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBEnum;
 use SilverStripe\ORM\Hierarchy\Hierarchy;
@@ -25,16 +27,16 @@ class Generator
 {
     const FALLBACK_IMAGE_URL = 'https://loremflickr.com/500/500/cat';
 
-    const SKIPPED_RELATION_CLASSES = array(
+    const SKIPPED_RELATION_CLASSES = [
         'Bigfork\SilverStripeOAuth\Client\Model\Passport',
         'SilverStripe\SessionManager\Models\LoginSession',
-        'SilverStripe\Security\Member',
-        'SilverStripe\Security\Group'
-    );
+        Member::class,
+        Group::class
+    ];
 
-    const SKIPPED_RELATION_NAMES = array(
+    const SKIPPED_RELATION_NAMES = [
         'FileTracking'
-    );
+    ];
 
     /**
      * This mode includes relations specified
@@ -48,18 +50,6 @@ class Generator
      * This mode excludes generation of related objects (however relationships may still be generated)
      */
     const RELATED_OBJECT_EXCLUDE = 2;
-    /**
-     * @var DumperInterface
-     */
-    private $dumper;
-    /**
-     * @var array
-     */
-    private $relations;
-    /**
-     * @var int
-     */
-    private $mode;
 
     private string $baseUrl = '';
 
@@ -68,14 +58,8 @@ class Generator
      * @param array           $relations An array of shell wildcard patterns
      * @param int             $mode      The mode the patterns should take, include vs. exclude
      */
-    public function __construct(
-        DumperInterface $dumper = null,
-        array $relations = null,
-        $mode = self::RELATION_MODE_INCLUDE
-    ) {
-        $this->dumper = $dumper;
-        $this->relations = $relations;
-        $this->mode = $mode;
+    public function __construct(private readonly ?DumperInterface $dumper = null, private readonly ?array $relations = null, private $mode = self::RELATION_MODE_INCLUDE)
+    {
     }
 
     /**
@@ -92,7 +76,7 @@ class Generator
         $mode = self::RELATION_MODE_INCLUDE
     ): string {
         return (new self(new Yaml(), $relations, $mode))->process(
-            new ArrayList(array($dataObject))
+            ArrayList::create([$dataObject])
         );
     }
 
@@ -102,7 +86,7 @@ class Generator
      */
     public function process(IteratorAggregate $set)
     {
-        $map = array();
+        $map = [];
         foreach ($set as $dataObject) {
             if (!$this->hasDataObject($dataObject, $map)) {
                 $map = $this->generateFromDataObject($dataObject, $map);
@@ -119,14 +103,12 @@ class Generator
      * @param array      $map
      * @return array
      */
-    private function generateFromDataObject(DataObject $dataObject, array &$map = array())
+    private function generateFromDataObject(DataObject $dataObject, array &$map = [])
     {
         $className = $dataObject->ClassName;
         $title = $this->getDataObjectTitle($dataObject);
         // If we haven't encountered a object of ClassName, add ClassName to data
-        if (!isset($map[$className])) {
-            $map[$className] = array();
-        }
+        $map[$className] ??= [];
 
         $defaults = Config::inst()->get($className, 'defaults');
         foreach ($this->getMap($dataObject) as $propertyName => $propertyValue) {
@@ -422,7 +404,7 @@ class Generator
      */
     private function parseShortcodeAttributes($source)
     {
-        $attributes = array();
+        $attributes = [];
         preg_match_all(
             '/([a-z_:][a-z0-9_:.-]*)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s"\']+))/i',
             $source,
@@ -529,7 +511,7 @@ class Generator
      * @param array      $map
      * @return bool
      */
-    private function hasDataObject(DataObject $dataObject, array $map = array())
+    private function hasDataObject(DataObject $dataObject, array $map = [])
     {
         return isset($map[$dataObject->ClassName][$this->getDataObjectTitle($dataObject)]);
     }
@@ -548,7 +530,7 @@ class Generator
         unset($map['ID']);
         unset($map['Version']);
         foreach ($map as $key => $value) {
-            if (substr($key, -2) == 'ID') {
+            if (str_ends_with($key, 'ID')) {
                 unset($map[$key]);
             }
         }
@@ -564,14 +546,14 @@ class Generator
      */
     private function orderMapByReferences(array $map)
     {
-        $classDependencies = array();
-        $recordDependencies = array();
+        $classDependencies = [];
+        $recordDependencies = [];
 
         foreach ($map as $className => $records) {
             foreach ($records as $recordName => $properties) {
                 foreach ($properties as $propertyValue) {
                     foreach ($this->getFixtureReferences($propertyValue) as $reference) {
-                        list($relatedClass, $relatedRecord) = $reference;
+                        [$relatedClass, $relatedRecord] = $reference;
                         if (!isset($map[$relatedClass])) {
                             continue;
                         }
@@ -590,9 +572,7 @@ class Generator
 
         $map = $this->sortByDependencies($map, $classDependencies);
         foreach ($map as $className => $records) {
-            $dependencies = isset($recordDependencies[$className])
-                ? $recordDependencies[$className]
-                : array();
+            $dependencies = $recordDependencies[$className] ?? [];
             $map[$className] = $this->sortByDependencies($records, $dependencies);
         }
 
@@ -611,7 +591,7 @@ class Generator
     private function removeForwardReferences(array $map)
     {
         $classPositions = array_flip(array_keys($map));
-        $recordPositions = array();
+        $recordPositions = [];
         foreach ($map as $className => $records) {
             $recordPositions[$className] = array_flip(array_keys($records));
         }
@@ -623,7 +603,7 @@ class Generator
                         continue;
                     }
 
-                    $keptValues = array();
+                    $keptValues = [];
                     $hasReference = false;
                     foreach (explode(',', $propertyValue) as $item) {
                         $item = trim($item);
@@ -634,7 +614,7 @@ class Generator
                         }
 
                         $hasReference = true;
-                        list($relatedClass, $relatedRecord) = $references[0];
+                        [$relatedClass, $relatedRecord] = $references[0];
                         if (!isset($classPositions[$relatedClass])
                             || !isset($recordPositions[$relatedClass][$relatedRecord])
                             || $classPositions[$relatedClass] < $classPositions[$className]
@@ -668,13 +648,13 @@ class Generator
     private function getFixtureReferences($value)
     {
         if (!is_string($value)) {
-            return array();
+            return [];
         }
 
-        $references = array();
+        $references = [];
         foreach (explode(',', $value) as $item) {
             $item = trim($item);
-            if (strpos($item, '=>') !== 0) {
+            if (!str_starts_with($item, '=>')) {
                 continue;
             }
 
@@ -684,10 +664,10 @@ class Generator
                 continue;
             }
 
-            $references[] = array(
+            $references[] = [
                 substr($reference, 0, $separator),
                 substr($reference, $separator + 1)
-            );
+            ];
         }
 
         return $references;
@@ -702,9 +682,9 @@ class Generator
      */
     private function sortByDependencies(array $items, array $dependencies)
     {
-        $result = array();
-        $states = array();
-        $visit = function ($key) use (&$visit, &$result, &$states, $items, $dependencies) {
+        $result = [];
+        $states = [];
+        $visit = function ($key) use (&$visit, &$result, &$states, $items, $dependencies): void {
             if (isset($states[$key])) {
                 return;
             }

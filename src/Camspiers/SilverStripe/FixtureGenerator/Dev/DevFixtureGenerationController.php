@@ -7,7 +7,6 @@ use Camspiers\SilverStripe\FixtureGenerator\Generator;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
-use SilverStripe\Control\HTTPResponse;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Dev\DebugView;
 use SilverStripe\ORM\DataObject;
@@ -57,7 +56,7 @@ class DevFixtureGenerationController extends Controller
       // Create a link for all DataObject classes
       if (!$Class) {
         echo '<ul>';
-        $classes = ClassInfo::subclassesFor(DataObject::class, false);
+        $classes = ClassInfo::subclassesFor(DataObject::class);
         foreach ($classes as $class) {
           $class = ltrim($class, '\\');
           $link = Controller::join_links(

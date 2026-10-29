@@ -8,15 +8,10 @@ use Symfony\Component\Yaml\Yaml as YamDumper;
 class Yaml implements DumperInterface
 {
     /**
-     * @var string
-     */
-    private $filename;
-    /**
      * @param string|null $filename
      */
-    public function __construct($filename = null)
+    public function __construct(private $filename = null)
     {
-        $this->filename = $filename;
     }
     /**
      * @{@inheritdoc}
