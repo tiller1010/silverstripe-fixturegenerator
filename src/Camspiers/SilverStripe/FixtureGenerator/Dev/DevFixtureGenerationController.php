@@ -9,6 +9,7 @@ use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Dev\DebugView;
+use SilverStripe\Model\List\ArrayList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
@@ -108,7 +109,7 @@ class DevFixtureGenerationController extends Controller
       new Yaml(
         Director::baseFolder() . '/app/seeds/' . $fileName
       )
-    ))->process($Object);
+    ))->process(ArrayList::create([$Object]));
   }
 
 }
