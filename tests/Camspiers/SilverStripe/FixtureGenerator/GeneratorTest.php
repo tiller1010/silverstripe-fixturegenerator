@@ -67,17 +67,11 @@ class GeneratorTest extends \PHPUnit_Framework_TestCase
             \Symfony\Component\Yaml\Yaml::parse($yaml)
         );
     }
-    public function testProcessHasOne()
+    public function testProcessDoesNotIncludeOrTraverseParentOfInitialObject()
     {
         $this->assertEquals(
             array(
                 'TestHasOneDataObject' => array(
-                    1 => array(
-                        'Test'   => 'Test',
-                        'Parent' => '=>TestHasManyDataObject.1'
-                    )
-                ),
-                'TestHasManyDataObject' => array(
                     1 => array(
                         'Test' => 'Test'
                     )

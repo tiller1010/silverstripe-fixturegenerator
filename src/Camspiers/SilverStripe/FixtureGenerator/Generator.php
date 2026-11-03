@@ -105,7 +105,7 @@ class Generator
         $map = array();
         foreach ($set as $dataObject) {
             if (!$this->hasDataObject($dataObject, $map)) {
-                $map = $this->generateFromDataObject($dataObject, $map);
+                $map = $this->generateFromDataObject($dataObject, $map, true);
             }
         }
 
@@ -117,9 +117,14 @@ class Generator
     /**
      * @param DataObject $dataObject
      * @param array      $map
+     * @param bool       $isInitialObject
      * @return array
      */
-    private function generateFromDataObject(DataObject $dataObject, array &$map = array())
+    private function generateFromDataObject(
+        DataObject $dataObject,
+        array &$map = array(),
+        $isInitialObject = false
+    )
     {
         $className = $dataObject->ClassName;
         $title = $this->getDataObjectTitle($dataObject);
@@ -150,6 +155,10 @@ class Generator
         // Loop over the has one of this object
         if ($hasOnes = $dataObject->hasOne()) {
             foreach ($hasOnes as $relName => $relClass) {
+                if ($isInitialObject && strcasecmp($relName, 'Parent') === 0) {
+                    continue;
+                }
+
                 if ($this->isAllowedRelation("$className.$relName")) {
                     // Get the dataobject from the relation
                     $hasOne = $dataObject->$relName();
