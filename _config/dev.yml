@@ -2,7 +2,7 @@
 Name: Fixture_Generator_DevelopmentAdmin
 ---
 SilverStripe\Dev\DevelopmentAdmin:
-  registered_controllers:
+  controllers:
     fixture_generation:
       controller: Camspiers\SilverStripe\FixtureGenerator\Dev\DevFixtureGenerationController
       links:
